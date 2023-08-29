@@ -20,6 +20,7 @@ import type {
   ExitCode,
   FSNode,
   FileData,
+  FFMessageMountData,
 } from "./types";
 import { CORE_URL, FFMessageType } from "./const.js";
 import {
@@ -137,6 +138,11 @@ const deleteDir = ({ path }: FFMessageDeleteDirData): OK => {
   return true;
 };
 
+const mount = ({ type, opts, mountpoint }: FFMessageMountData): OK => {
+  ffmpeg.FS.mount(type, opts, mountpoint);
+  return true;
+};
+
 self.onmessage = async ({
   data: { id, type, data: _data },
 }: FFMessageEvent): Promise<void> => {
@@ -173,6 +179,8 @@ self.onmessage = async ({
       case FFMessageType.DELETE_DIR:
         data = deleteDir(_data as FFMessageDeleteDirData);
         break;
+      case FFMessageType.MOUNT:
+        data = mount(_data as FFMessageMountData);
       default:
         throw ERROR_UNKNOWN_MESSAGE_TYPE;
     }

@@ -58,6 +58,7 @@ export interface FS {
   isFile: (mode: number) => boolean;
   /** mode is a numeric notation of permission, @see [Numeric Notation](https://en.wikipedia.org/wiki/File-system_permissions#Numeric_notation) */
   isDir: (mode: number) => boolean;
+  mount: (type: any, opts: any, mountpoint: string) => any;
 }
 
 /**

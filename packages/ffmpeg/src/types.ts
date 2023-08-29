@@ -24,6 +24,14 @@ export interface FFMessageLoadConfig {
   workerURL?: string;
 }
 
+export interface MountOpts {
+  blobs?: {
+    name: string;
+    data: Blob;
+  }[];
+  files?: File[];
+}
+
 export interface FFMessageExecData {
   args: string[];
   timeout?: number;
@@ -64,6 +72,12 @@ export interface FFMessageDeleteDirData {
   path: FFFSPath;
 }
 
+export interface FFMessageMountData {
+  type: any;
+  opts: MountOpts;
+  mountpoint: string;
+}
+
 export type FFMessageData =
   | FFMessageLoadConfig
   | FFMessageExecData
@@ -73,7 +87,8 @@ export type FFMessageData =
   | FFMessageRenameData
   | FFMessageCreateDirData
   | FFMessageListDirData
-  | FFMessageDeleteDirData;
+  | FFMessageDeleteDirData
+  | FFMessageMountData;
 
 export interface Message {
   type: string;

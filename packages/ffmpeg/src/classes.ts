@@ -13,6 +13,7 @@ import {
   LogEventCallback,
   ProgressEventCallback,
   FileData,
+  MountOpts,
 } from "./types.js";
 import { getMessageID } from "./utils.js";
 import { ERROR_TERMINATED, ERROR_NOT_LOADED } from "./errors.js";
@@ -60,6 +61,7 @@ export class FFmpeg {
           case FFMessageType.CREATE_DIR:
           case FFMessageType.LIST_DIR:
           case FFMessageType.DELETE_DIR:
+          case FFMessageType.MOUNT:
             this.#resolves[id](data);
             break;
           case FFMessageType.LOG:
@@ -339,5 +341,11 @@ export class FFmpeg {
     this.#send({
       type: FFMessageType.DELETE_DIR,
       data: { path },
+    }) as Promise<OK>;
+
+  public mount = (type: any, opts: MountOpts, mountpoint: string): Promise<OK> =>
+    this.#send({
+      type: FFMessageType.MOUNT,
+      data: { type, opts, mountpoint },
     }) as Promise<OK>;
 }
