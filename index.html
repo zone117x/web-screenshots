@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="opencv.js"></script>
+    <script src="ffmpeg.js"></script>
+    <style>
+        #logOutput {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap; /* Preserves whitespace and line breaks */
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+  </head>
+  <body>
+    <input type="file" id="videoFile" />
+    <div id="logOutput"></div>
+    <div id="output"></div>
+    <script src="script.js"></script>
+  </body>
+</html>
