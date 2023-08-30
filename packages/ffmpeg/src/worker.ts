@@ -139,7 +139,7 @@ const deleteDir = ({ path }: FFMessageDeleteDirData): OK => {
 };
 
 const mount = ({ type, opts, mountpoint }: FFMessageMountData): OK => {
-  ffmpeg.FS.mount(type, opts, mountpoint);
+  ffmpeg.FS.mount(ffmpeg.FS.filesystems[type], opts, mountpoint);
   return true;
 };
 
@@ -181,6 +181,7 @@ self.onmessage = async ({
         break;
       case FFMessageType.MOUNT:
         data = mount(_data as FFMessageMountData);
+        break;
       default:
         throw ERROR_UNKNOWN_MESSAGE_TYPE;
     }
