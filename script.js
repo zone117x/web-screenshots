@@ -57,9 +57,7 @@ async function generateScreenshots() {
     '-an', // No audio output
     '-vn', // No video output
     '-sn', // No subtitle output
-    '-y', // Overwrite output files without asking
     '-hide_banner', // Hide the banner information
-    '-f', 'null', // Use a null muxer to discard the output.
   ]);
   ffmpeg.off('log', logOutputCb);
   if (!duration) {
@@ -81,7 +79,6 @@ async function generateScreenshots() {
       '-i', videoPath,
       '-an', // No audio output
       '-sn', // No subtitle output
-      '-update', 'true',
       '-frames:v', '1',
       `screen_${timestamp}.png`
     ]);
@@ -129,7 +126,7 @@ async function generateScreenshots() {
         log('Blurry image');
       }
 
-      imgElement.title = `Intensity (blurriness): ${averageIntensity}, variance (blurriness): ${variance}`
+      imgElement.title = `Intensity (brightness): ${averageIntensity}, variance (blurriness): ${variance}`
       if (!isBlurry && !isDark) {
         validScreenshots++;
       }
