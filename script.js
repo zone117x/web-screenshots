@@ -90,88 +90,89 @@ async function generateScreenshots() {
   let blurryScreenshots = 0;
   let darkScreenshots = 0;
 
-  let additionalArgs = [];
+  // Correct resolution for anamorphic videos
+  let vfArg = `scale='max(sar,1)*iw':'max(1/sar,1)*ih'`;
+
+  // Tonemapping for HDR videos
+  const vfHdrTonemapping = 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p';
   
   if (isHDR) {
-    // Add HDR to SDR tonemapping filter
-    additionalArgs.push(
-      '-vf',
-      'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p',
-    );
+    vfArg += `,${vfHdrTonemapping}`;
   }
 
   for (let i = 1; i <= maxAttempts; i++) {
     const timestamp = randomTime();
+    const screenFileName = `screen_${i}_${timestamp}.png`;
     const ffmpegArgs = [
       '-ss', `${timestamp}`,
       '-i', videoPath,
       '-an', // No audio
       '-sn', // No subtitles
       '-map', '0:v:0', // only use the first video stream from the first input file
-      ...additionalArgs,
+      '-vf', vfArg,
       '-pix_fmt', 'rgb24',
       '-frames:v', '1',
-      `screen_${timestamp}.png`
+      screenFileName
     ];
     log(`> ffmpeg ${ffmpegArgs.join(' ')}`);
-    const result = await ffmpeg.exec(ffmpegArgs);
-    log('Screenshot generated', result);
+    await ffmpeg.exec(ffmpegArgs);
 
-    const thumbData = await ffmpeg.readFile(`screen_${timestamp}.png`);
+    const thumbData = await ffmpeg.readFile(screenFileName);
     const thumbBlob = new Blob([thumbData.buffer], { type: 'image/png' });
     const objectURL = URL.createObjectURL(thumbBlob);
+    await ffmpeg.deleteFile(screenFileName);
 
-    const imgId = `outputImage_${timestamp}`;
+    const imgId = `outputImage_${i}_${timestamp}`;
     const imgElement = document.createElement('img');
     imgElement.id = imgId;
     imgElement.src = objectURL;
     imgElement.style.maxWidth = '20%';
     imgElement.style.cursor = 'pointer';
     imgElement.onclick = () => window.open(objectURL, '_blank');
-    imgElement.onload = () => {
-      const image = cv.imread(imgId);
-
-      // Convert to grayscale for easier calculations
-      const gray = new cv.Mat();
-      cv.cvtColor(image, gray, cv.COLOR_RGBA2GRAY, 0);
-
-      // Check darkness
-      const meanIntensity = cv.mean(gray);
-      const averageIntensity = meanIntensity[0];
-      const isDark = averageIntensity < 50; // Threshold can be adjusted
-      log(`Average intensity (brightness): ${averageIntensity}`);
-      if (isDark) {
-        darkScreenshots++;
-        log('Dark image');
-      }
-
-      // Check blurriness
-      const laplacian = new cv.Mat();
-      cv.Laplacian(gray, laplacian, cv.CV_64F);
-      const mean = new cv.Mat();
-      const stddev = new cv.Mat();
-      cv.meanStdDev(laplacian, mean, stddev);
-      const variance = Math.pow(stddev.data64F[0], 2);
-      const isBlurry = variance < 1000; // Threshold can be adjusted
-      log(`Variance (blurriness): ${variance}`);
-      if (isBlurry) {
-        blurryScreenshots++;
-        log('Blurry image');
-      }
-
-      imgElement.title = `Intensity (brightness): ${averageIntensity}, variance (blurriness): ${variance}`
-      if (!isBlurry && !isDark) {
-        validScreenshots++;
-      }
-      log(`Generated ${i} screenshots: ${validScreenshots} clear, ${blurryScreenshots} blurry, ${darkScreenshots} dark`);
-
-      // Clean up
-      image.delete();
-      gray.delete();
-      laplacian.delete();
-      mean.delete();
-      stddev.delete();
-    };
     document.getElementById('output').appendChild(imgElement);
+    await new Promise(resolve => imgElement.onload = () => resolve());
+
+    const image = cv.imread(imgId);
+
+    // Convert to grayscale for easier calculations
+    const gray = new cv.Mat();
+    cv.cvtColor(image, gray, cv.COLOR_RGBA2GRAY, 0);
+
+    // Check darkness
+    const meanIntensity = cv.mean(gray);
+    const averageIntensity = meanIntensity[0];
+    const isDark = averageIntensity < 50; // Threshold can be adjusted
+    log(`Average intensity (brightness): ${averageIntensity}`);
+    if (isDark) {
+      darkScreenshots++;
+      log('Dark image');
+    }
+
+    // Check blurriness
+    const laplacian = new cv.Mat();
+    cv.Laplacian(gray, laplacian, cv.CV_64F);
+    const mean = new cv.Mat();
+    const stddev = new cv.Mat();
+    cv.meanStdDev(laplacian, mean, stddev);
+    const variance = Math.pow(stddev.data64F[0], 2);
+    const isBlurry = variance < 1000; // Threshold can be adjusted
+    log(`Variance (blurriness): ${variance}`);
+    if (isBlurry) {
+      blurryScreenshots++;
+      log('Blurry image');
+    }
+
+    imgElement.title = `Intensity (brightness): ${averageIntensity}, variance (blurriness): ${variance}`
+    if (!isBlurry && !isDark) {
+      validScreenshots++;
+    }
+    log(`Generated ${i} screenshots: ${validScreenshots} clear, ${blurryScreenshots} blurry, ${darkScreenshots} dark`);
+
+    // Clean up
+    image.delete();
+    gray.delete();
+    laplacian.delete();
+    mean.delete();
+    stddev.delete();
   }
 }
