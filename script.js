@@ -5,8 +5,16 @@ document.addEventListener('DOMContentLoaded', init);
 function log(message) {
   console.log(message);
   const logDiv = document.getElementById('logOutput');
+  const isScrolledToBottom = logDiv.scrollHeight - logDiv.clientHeight <= logDiv.scrollTop + 1;
   logDiv.textContent += message + '\n';
-  logDiv.scrollTop = logDiv.scrollHeight;
+  if (isScrolledToBottom) {
+    logDiv.scrollTop = logDiv.scrollHeight;
+  }
+}
+
+function addInfo(message) {
+  const infoDiv = document.getElementById('info');
+  infoDiv.textContent += message + '\n';
 }
 
 function parseDuration(durString) {
@@ -45,20 +53,30 @@ async function generateScreenshots() {
   await ffmpeg.mount('WORKERFS', { files: [videoFile] }, '/videos');
 
   let duration = null;
+  let isHDR = false;
   const logOutputCb = ({ type, message }) => {
-    duration = parseDuration(message);
-    if (duration) {
-      ffmpeg.off('log', logOutputCb);
+    if (!duration && (duration = parseDuration(message))) {
+      addInfo(`Video duration: ${duration} seconds`);
+    }
+    // HDR content typically has a video stream description like:
+    //   > Stream #0:0(eng): Video: hevc (Main 10), yuv420p10le(tv, bt2020nc/bt2020/smpte2084)
+    // AFAIK the most reliable way to detect HDR is to look for the smpte2084 flag
+    if (!isHDR && message.includes('smpte2084')) {
+      isHDR = true;
+      addInfo(`Tonemapping enabled, HDR detected from line: ${message.trim()}`);
     }
   };
   ffmpeg.on('log', logOutputCb);
-  await ffmpeg.exec([
+  const ffmpegInfoArgs = [
     '-i', videoPath,
-    '-an', // No audio output
+    '-an', // No audio
+    '-sn', // No subtitles
+    '-map', '0:v:0', // only use the first video stream from the first input file
     '-vn', // No video output
-    '-sn', // No subtitle output
     '-hide_banner', // Hide the banner information
-  ]);
+  ];
+  log(`> ffmpeg ${ffmpegInfoArgs.join(' ')}`);
+  await ffmpeg.exec(ffmpegInfoArgs);
   ffmpeg.off('log', logOutputCb);
   if (!duration) {
     throw new Error(`Could not determine video duration`);
@@ -72,16 +90,31 @@ async function generateScreenshots() {
   let blurryScreenshots = 0;
   let darkScreenshots = 0;
 
+  let additionalArgs = [];
+  
+  if (isHDR) {
+    // Add HDR to SDR tonemapping filter
+    additionalArgs.push(
+      '-vf',
+      'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p',
+    );
+  }
+
   for (let i = 1; i <= maxAttempts; i++) {
     const timestamp = randomTime();
-    const result = await ffmpeg.exec([
+    const ffmpegArgs = [
       '-ss', `${timestamp}`,
       '-i', videoPath,
-      '-an', // No audio output
-      '-sn', // No subtitle output
+      '-an', // No audio
+      '-sn', // No subtitles
+      '-map', '0:v:0', // only use the first video stream from the first input file
+      ...additionalArgs,
+      '-pix_fmt', 'rgb24',
       '-frames:v', '1',
       `screen_${timestamp}.png`
-    ]);
+    ];
+    log(`> ffmpeg ${ffmpegArgs.join(' ')}`);
+    const result = await ffmpeg.exec(ffmpegArgs);
     log('Screenshot generated', result);
 
     const thumbData = await ffmpeg.readFile(`screen_${timestamp}.png`);

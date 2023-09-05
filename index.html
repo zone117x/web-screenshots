@@ -5,7 +5,7 @@
     <script src="opencv.js"></script>
     <script src="ffmpeg.js"></script>
     <style>
-        #logOutput {
+        .loginfo {
             font-family: 'Courier New', Courier, monospace;
             white-space: pre-wrap; /* Preserves whitespace and line breaks */
             border: 1px solid #ccc;
@@ -17,7 +17,8 @@
   </head>
   <body>
     <input type="file" id="videoFile" />
-    <div id="logOutput"></div>
+    <div class="loginfo" id="logOutput"></div>
+    <div class="loginfo" id="info"></div>
     <div id="output"></div>
     <script src="script.js"></script>
   </body>
